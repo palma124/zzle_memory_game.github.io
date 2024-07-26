@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZZLE</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+        }
+
+        #game {
+            text-align: center;
+            position: relative;
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 100px);
+            grid-gap: 10px;
+            margin: 20px auto;
+        }
+
+        .card {
+            width: 100px;
+            height: 100px;
+            background-color: #333;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .hidden {
+            background-color: #ccc;
+            color: #ccc;
+        }
+
+        .matched {
+            background-color: #4caf50;
+            color: #4caf50;
+        }
+
+        #score-board {
+            margin-top: 20px;
+        }
+
+        #score-board p {
+            font-size: 18px;
+            margin: 5px 0;
+        }
+
+        #emoji-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 50px;
+            display: none;
+            animation: pop-up 1s ease-out;
+        }
+
+        @keyframes pop-up {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="game">
+        <h1>ZZLE</h1>
+        <div id="game-board"></div>
+        <div id="score-board">
+            <p>Moves: <span id="moves">0</span></p>
+            <p>Pairs Matched: <span id="pairs">0</span></p>
+            <p>Move Limit: <span id="move-limit">20</span></p>
+            <p>Time Left: <span id="time-left">60</span>s</p>
+        </div>
+        <div id="emoji-message">goofy🤡</div>
+    </div>
+    <audio id="match-sound" src="bingo.mp3"></audio>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const gameBoard = document.getElementById('game-board');
+            const movesDisplay = document.getElementById('moves');
+            const pairsDisplay = document.getElementById('pairs');
+            const moveLimitDisplay = document.getElementById('move-limit');
+            const timeLeftDisplay = document.getElementById('time-left');
+            const matchSound = document.getElementById('match-sound');
+            const emojiMessage = document.getElementById('emoji-message');
+
+            const cardValues = [
+                'A', 'A', 'B', 'B', 'C', 'C', 'D', 'D', 
+                'E', 'E', 'F', 'F', 'G', 'G', 'H', 'H'
+            ];
+
+            let cards = [];
+            let firstCard = null;
+            let secondCard = null;
+            let moves = 0;
+            let pairs = 0;
+            const moveLimit = 20;
+            let timeLeft = 60;
+            let timer;
+
+            function shuffle(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+            }
+
+            function initializeGame() {
+                shuffle(cardValues);
+                cardValues.forEach(value => {
+                    const card = document.createElement('div');
+                    card.classList.add('card', 'hidden');
+                    card.dataset.value = value;
+                    card.addEventListener('click', handleCardClick);
+                    gameBoard.appendChild(card);
+                    cards.push(card);
+                });
+                startTimer();
+            }
+
+            function handleCardClick(event) {
+                const clickedCard = event.target;
+
+                if (clickedCard === firstCard || clickedCard.classList.contains('matched')) {
+                    return;
+                }
+
+                clickedCard.classList.remove('hidden');
+                clickedCard.textContent = clickedCard.dataset.value;
+
+                if (!firstCard) {
+                    firstCard = clickedCard;
+                } else {
+                    secondCard = clickedCard;
+                    moves++;
+                    movesDisplay.textContent = moves;
+
+                    if (firstCard.dataset.value === secondCard.dataset.value) {
+                        matchSound.play();
+                        firstCard.classList.add('matched');
+                        secondCard.classList.add('matched');
+                        pairs++;
+                        pairsDisplay.textContent = pairs;
+
+                        showEmojiMessage();
+
+                        if (pairs === cardValues.length / 2) {
+                            clearInterval(timer);
+                            setTimeout(() => alert('Thats not fair. You cheated 👀'), 500);
+                        }
+
+                        resetSelection();
+                    } else {
+                        setTimeout(() => {
+                            firstCard.classList.add('hidden');
+                            firstCard.textContent = '';
+                            secondCard.classList.add('hidden');
+                            secondCard.textContent = '';
+                            resetSelection();
+                        }, 1000);
+                    }
+
+                    if (moves >= moveLimit) {
+                        clearInterval(timer);
+                        setTimeout(() => alert('Game over! You have exceeded the move limit.😭'), 500);
+                        gameBoard.removeEventListener('click', handleCardClick);
+                    }
+                }
+            }
+
+            function resetSelection() {
+                firstCard = null;
+                secondCard = null;
+            }
+
+            function showEmojiMessage() {
+                emojiMessage.style.display = 'block';
+                setTimeout(() => {
+                    emojiMessage.style.display = 'none';
+                }, 1000);
+            }
+
+            function startTimer() {
+                timer = setInterval(() => {
+                    timeLeft--;
+                    timeLeftDisplay.textContent = timeLeft;
+
+                    if (timeLeft <= 0) {
+                        clearInterval(timer);
+                        alert('Time is up! Better luck next time.🤡');
+                        gameBoard.removeEventListener('click', handleCardClick);
+                    }
+                }, 1000);
+            }
+
+            initializeGame();
+        });
+    </script>
+</body>
+</html>
